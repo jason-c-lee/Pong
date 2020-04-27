@@ -1,0 +1,194 @@
+<html>
+<div style="text-align:center">
+PONG <br>
+by Jason Lee <br>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+</div>
+
+<script>
+var canvas;
+var cavasContext;
+var framePerSecond = 1000;
+var ballRadius = 10;
+var ballX = 26;
+var ballY = 295;
+var ballSpeedX = 2;
+var ballSpeedY = 1;
+var playerPaddleY = 250;
+var computerPaddleY = 250;
+const PADDLE_LENGTH = 100;
+const PADDLE_THICKNESS = 5;
+
+var playerScore = 0;
+var computerScore = 0;
+const WINNING_SCORE = 5;
+var showingWinScreen = false;
+var newGame = true;
+
+function calculateMousePos(event) {
+    var rect = canvas.getBoundingClientRect();
+    var root = document.documentElement;
+    var mouseX = event.clientX - rect.left - root.scrollLeft;
+    var mouseY = event.clientY - rect.top - root.scrollTop;
+    return {
+        x:mouseX,
+        y:mouseY
+    };
+}
+
+function handleMouseClick() {
+    if(showingWinScreen){
+        playerScore = 0;
+        computerScore = 0;
+        showingWinScreen = false;
+    }
+    if(newGame)
+        newGame = false;
+}
+
+window.onload = function() {
+    canvas = document.getElementById('gameCanvas');
+    canvasContext = canvas.getContext('2d');
+    setInterval(doBoth, 1000/framePerSecond);
+
+    canvas.addEventListener('mousedown',handleMouseClick)
+    canvas.addEventListener('mousemove',
+        function(event){
+            var mousePos = calculateMousePos(event);
+            playerPaddleY = mousePos.y-PADDLE_LENGTH/2; 
+        })
+}
+
+function resetBall(){
+    if(playerScore >= WINNING_SCORE || computerScore >= WINNING_SCORE){
+        showingWinScreen = true;
+    }
+    ballSpeedX = -ballSpeedX;
+    ballSpeedY = 1;
+    ballX = canvas.width/2;
+    ballY = canvas.height/2;
+}
+
+function doBoth(){
+    moveEverything();
+    drawEverything(); 
+}
+
+function moveEverything(){   
+    if(newGame)
+        return;
+    if(showingWinScreen)
+        return;
+
+    computerMovement();
+    //Bounce the ball back from the player paddle
+    if(ballX <=(10+PADDLE_THICKNESS+ballRadius) && ballX >=(8+PADDLE_THICKNESS+ballRadius) && (ballY >= playerPaddleY && ballY <= playerPaddleY+PADDLE_LENGTH)) {
+        if (ballSpeedX <0)
+        ballSpeedX = -ballSpeedX;
+        var deltaY = ballY - (playerPaddleY+PADDLE_LENGTH/2);
+        ballSpeedY = deltaY * 0.1;
+    }
+    //Bounce the ball back from the computer paddle
+    if(ballX >=(canvas.width-10-PADDLE_THICKNESS-ballRadius) && ballX <=(canvas.width-8-PADDLE_THICKNESS-ballRadius) && (ballY >= computerPaddleY && ballY <= computerPaddleY+PADDLE_LENGTH)) {
+        if (ballSpeedX >0)
+        ballSpeedX = -ballSpeedX;
+        var deltaY = ballY - (computerPaddleY+PADDLE_LENGTH/2);
+        ballSpeedY = deltaY * 0.1;
+    }
+
+    //Bounce the ball back from the bottom
+    if(ballY >= canvas.height-ballRadius)
+        ballSpeedY = -ballSpeedY;
+    //Bounce the ball back from the top
+    if(ballY < ballRadius)
+        ballSpeedY = -ballSpeedY;
+    //Reset the ball if ball hits the left wall    
+    if(ballX <= 0) {
+        computerScore++;
+        resetBall();
+    }
+    //Reset the ball if ball hits the right wall    
+    if(ballX >= canvas.width) {
+        playerScore++;
+        resetBall();
+    }
+    ballX += ballSpeedX;
+    ballY += ballSpeedY;
+}
+
+function computerMovement(){
+    var computerPaddleYCenter = computerPaddleY + PADDLE_LENGTH/2;
+    if (computerPaddleYCenter < ballY)
+        computerPaddleY += 2;
+    else
+        computerPaddleY -= 2;
+}
+
+function drawEverything() {
+    //Blanks out the screen with black
+    drawRect(0, 0, canvas.width, canvas.height, 'black');
+    //Draw the player paddle
+    drawRect(10, playerPaddleY, PADDLE_THICKNESS, PADDLE_LENGTH, 'white');
+     //Draw the computer paddle
+     drawRect(canvas.width-PADDLE_THICKNESS-10, computerPaddleY, PADDLE_THICKNESS, PADDLE_LENGTH, 'white');
+    canvasContext.font = "25px fantasy";
+    canvasContext.fillStyle = 'white';
+    canvasContext.fillText("Your Score:",20,50);
+    canvasContext.fillText("Computer Score:",canvas.width-220,50);
+    canvasContext.fillStyle = 'yellow';
+    canvasContext.fillText(playerScore,140,50);
+    canvasContext.fillText(computerScore,canvas.width-40,50);
+    if(newGame) {
+        canvasContext.font = "75px fantasy";
+        canvasContext.fillStyle = 'white';
+        canvasContext.fillText("PONG by JASON LEE",canvas.width/2-260,canvas.height/2-50);
+        canvasContext.fillText("click to start",canvas.width/2-185,canvas.height/2+100);
+        return;
+    }
+
+    if(showingWinScreen) {
+        canvasContext.font = "100px fantasy"
+        if(playerScore >= WINNING_SCORE) {
+            canvasContext.fillStyle = 'rgb(0,255,0)';
+            canvasContext.fillText("YOU WIN!",canvas.width/2-175,canvas.height/2);
+            canvasContext.font = "25px fantasy"
+            canvasContext.fillText("click to start a new game",canvas.width/2-125,canvas.height/2+100);
+        }
+        if(computerScore >= WINNING_SCORE) {
+            canvasContext.fillStyle = 'red';
+            canvasContext.fillText("YOU LOSE!",canvas.width/2-185,canvas.height/2);
+            canvasContext.font = "25px fantasy"
+            canvasContext.fillText("click to start a new game",canvas.width/2-125,canvas.height/2+100);
+        }
+        return;
+    }
+
+    drawNet();
+    //Draw the ball
+    drawCircle(ballX, ballY, ballRadius, 'white');
+}
+
+function drawNet(){
+    for (var i=0; i<canvas.height; i+=40) {
+        drawRect(canvas.width/2-1, i, 2, 20, 'white');
+    }
+
+}
+
+function drawRect(x, y, width, height, color){
+    canvasContext.fillStyle = color;
+    canvasContext.fillRect(x, y, width, height);
+
+}
+
+function drawCircle(centerX, centerY, radius, color){
+    canvasContext.fillStyle = color;
+    canvasContext.beginPath();
+    canvasContext.arc(centerX, centerY, radius, 0, Math.PI*2, true);
+    canvasContext.fill();    
+}
+
+</script>
+
+
+</html>
